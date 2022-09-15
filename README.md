@@ -3,8 +3,14 @@ Parse, modify and serialize PDF files with Node
 
 ## idea & motivation
 I was looking for a simple and small implementation of the PDF specs to manipulate PDFs on a basic level.
-PDF.js is comparably heavy including the possibility to render files which is great for use with a browser.
-Other libraries depend on command line tools (like qpdf, pdftk or mutool) written in another language.
+- PDF.js is comparably heavy including the possibility to render files (which is great for use with a browser).
+- Other libraries depend on command line tools (like qpdf, pdftk or mutool) that are written in another language.
+
+## install
+package has no dependencies
+```
+npm i pdf-lang
+```
 
 ## example usage
 ### list all pdf objects ordered by id
@@ -158,3 +164,9 @@ pdf.createStream(contents, { Filter: Symbol.for('FlateDecode') }, streamId)
 
 pdf.toFile('file-modified.pdf')
 ```
+
+## potential flaws
+- doesn't de- or encode any other stream types than "Flate"
+- loads complete file into memory
+- no content stream parsing (yet)
+- could create files that are not valid PDF files (if you really want to; you need to know the specs etc.)
