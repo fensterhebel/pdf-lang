@@ -3,7 +3,7 @@ Parse, modify and serialize PDF files with Node
 
 ## idea & motivation
 I was looking for a simple and small implementation of the PDF specs to manipulate PDFs on a basic level.
-- PDF.js is comparably heavy including the possibility to render files (which is great for use with a browser).
+- PDF.js is relativley heavy, including the possibility to render files (which is great for use with a browser).
 - Other libraries depend on command line tools (like qpdf, pdftk or mutool) that are written in another language.
 
 ## install
@@ -70,7 +70,7 @@ const pdf = new PDF('file.pdf')
 pdf.cut(2) // cut horizontally into 2
 // OR
 pdf.cut(1, 2) // cut vertically into 2
-// OR 
+// OR
 pdf.cut(2, 2) // cut horizontally into 2 and then vertically into 2 (resulting in 4 pages)
 pdf.toFile('file-cut.pdf')
 ```
@@ -143,7 +143,7 @@ pdf.getPage(3) // fourth page
 ```
 
 ### get/modify stream contents
-Example: move all text up a bit on the first page (not very reliable but 
+Example: move all text up a bit on the first page (not very reliable but
 ```javascript
 const { PDF } = require('pdf-lang')
 const pdf = new PDF('file.pdf')
@@ -165,8 +165,37 @@ pdf.createStream(contents, { Filter: Symbol.for('FlateDecode') }, streamId)
 pdf.toFile('file-modified.pdf')
 ```
 
+### create file from scratch
+This might not be very sensible, but it is (somewhat) possible
+```javascript
+const { PDF, mm2pt } = require('pdf-lang')
+const pdf = new PDF()
+const A4 = [0, 0, mm2pt(210), mm2pt(297)]
+const blueBox = pdf.createStream(
+  '2.835 0 0 2.835 0 0 cm q 1 w 0 0 1 RG 10 10 190 277 re S Q',
+  { Filter: Symbol.for('FlateDecode') }
+)
+
+pdf.tree.Root.Pages.Kids.push(pdf.createObject({
+  Type: Symbol.for('Page'),
+  Parent: pdf.getOriginal(pdf.tree.Root).Pages, // to get the "reference-only" object
+  MediaBox: A4,
+  Contents: blueBox
+}))
+pdf.tree.Root.Pages.Count++
+// OR (more convenient)
+pdf.addPage({
+  MediaBox: A4, // optional with addPage(); defaults to A4
+  Contents: blueBox
+})
+
+pdf.tree.Info.Title = 'Blue Box'
+pdf.toFile('blue_box.pdf')
+```
+
 ## potential flaws
-- doesn't de- or encode any other stream types than "Flate"
+- doesn’t decode or encode any other stream types than "Flate"
+- doesn’t parse content streams (yet)
+- doesn’t handle encrypted files
 - loads complete file into memory
-- no content stream parsing (yet)
-- could create files that are not valid PDF files (if you really want to; you need to know the specs etc.)
+- can create files that are not valid PDFs

@@ -17,7 +17,10 @@ const rgb2cmyk = (...rgb) => {
   cmyk.push(1 - l)
   return cmyk
 }
-const pt2mm = pt => pt * 72 / 25.4
+const mm2pt = mm => mm * 72 / 25.4
+
+const DEFAULT_VERSION = 'PDF-1.4'
+const DEFAULT_PAPERSIZE = [0, 0, mm2pt(210), mm2pt(297)] // A4
 
 class obj {
   constructor (id, gen = 0) {
@@ -402,7 +405,7 @@ class PDFParser {
 }
 
 class PDFSerializer {
-  constructor (tree, objects, version = 'PDF-1.4') {
+  constructor (tree, objects, version = DEFAULT_VERSION) {
     Object.assign(this, { tree, objects, version })
     this.pos = 0
   }
@@ -412,7 +415,7 @@ class PDFSerializer {
     fs.writeFileSync(this.file, '%' + this.version + '\n')
     this.pos = 2 + this.version.length
     this.write(Buffer.from('25b5edaefb0a', 'hex'))
-    this.written = new Array(this.tree.Root.Size)
+    this.written = new Array(this.tree.Size || 0)
     // for (let i = 0; i < this.objects.length; i++) {
       // if (!this.objects[i] || typeof this.objects[i] !== 'object') {
         // this.objects.splice(i, 1)
@@ -493,12 +496,30 @@ class PDFSerializer {
 }
 
 class PDF {
-  constructor (file) {
-    this.raw = fs.readFileSync(file)
-    const parser = new PDFParser(this.raw)
-    this.tree = parser.parse()
-    this.version = parser.version
-    this.objects = parser.objects
+  constructor (file = null) {
+    if (!file || typeof file === 'object') {
+      Object.assign(this, { version: DEFAULT_VERSION }, file)
+      this.objects = new Objects()
+      this.tree = this.objects.proxy({
+        Info: this.createObject({
+          Creator: 'pdf-lang'
+        }),
+        Root: this.createObject({
+          Type: Symbol.for('Catalog'),
+          Pages: this.createObject({
+            Type: Symbol.for('Pages'),
+            Kids: [],
+            Count: 0
+          })
+        })
+      })
+    } else {
+      this.raw = fs.readFileSync(file)
+      const parser = new PDFParser(this.raw)
+      this.tree = parser.parse()
+      this.version = parser.version
+      this.objects = parser.objects
+    }
   }
 
   static inspect (file) {
@@ -603,12 +624,12 @@ class PDF {
   }
 
   addPage (page) {
-    page = this.getOriginal(page)
+    page = this.getOriginal(page || {})
     page = this.createObject(Object.assign({
       Type: Symbol.for('Page'),
-      Parent: this.tree.Root.Pages,
+      Parent: this.getOriginal(this.tree.Root).Pages,
       // Resources: this.Resources,
-      MediaBox: [0, 0, 595.27559, 841.88976 ]
+      MediaBox: DEFAULT_PAPERSIZE.slice(0)
     }, page))
     this.tree.Root.Pages.Kids.push(page)
     this.tree.Root.Pages.Count++
@@ -677,5 +698,5 @@ class PDF {
 
 module.exports = {
   PDF, PDFParser, PDFSerializer,
-  localDate, rgb2cmyk, pt2mm
+  localDate, rgb2cmyk, mm2pt
 }
