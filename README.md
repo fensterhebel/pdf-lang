@@ -9,7 +9,7 @@ Other libraries depend on command line tools (like qpdf, pdftk or mutool) writte
 ## example usage
 ### show contents
 ```javascript
-const { inspect } = require('pdf-lang')
+const PDF = require('pdf-lang')
 PDF.inspect('file.pdf')
 // lists all pdf objects by id:
 /*
