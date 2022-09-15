@@ -85,14 +85,15 @@ pdf.toCMYK((rgb, cmyk) => {
   rgb = rgb.map(v => Math.round(v * 255))
   ...
   cmyk = [ ... ]
-  // or do simple modifications like
+
+// or do simple modifications like
   cmyk[1] *= 0.8
   return cmyk
 })
 pdf.toFile('file-cmyk.pdf')
 ```
 
-### traversing through the internal tree structure
+### traverse through the internal tree structure
 The base is `<PDF>.tree` which contains the PDF trailer. The nodes are `Proxy` objects, allowing the internal references to other objects (`obj { id: 2 }`) to be resolved.
 ```javascript
 const { PDF } = require('pdf-lang')
@@ -125,4 +126,35 @@ const streamId = pdf.getOriginal(pdf.tree.Root.Pages.Kids[0]).Contents.id
 // OR
 const pageId = pdf.tree.Root.Pages.Kids[Symbol.for('original')][0].id
 const streamId = pdf.tree.Root.Pages.Kids[0][Symbol.for('original')].Contents.id
+
+// To get all page objects:
+for (const page of pdf.getPages()) {
+  ...
+}
+// or the first (or "n - 1"th page)
+pdf.getPage(0) // first page
+pdf.getPage(3) // fourth page
+```
+
+### get/modify stream contents
+Example: move all text up a bit on the first page (not very reliable but 
+```javascript
+const { PDF } = require('pdf-lang')
+const pdf = new PDF('file.pdf')
+const streamId = pdf.tree.Root.Pages.Kids[0][Symbol.for('original')].Contents.id
+let contents = pdf.getStream(streamId).toString() // decodes the stream if it is Flate encoded
+contents = contents.replace(/-?[0-9.]+\s+-?[0-9.]+(?=\s+Tm)/g, (m) => {
+  m = m.split(/\s+/).map(n => +n)
+  m[1] += 3
+  return m.join(' ')
+})
+
+// leave the Filter as it is (e.g. FlateDecode or None)
+// and replace existing stream object by providing the old id
+pdf.createStream(contents, {}, streamId)
+// OR
+// enforce deflating data
+pdf.createStream(contents, { Filter: Symbol.for('FlateDecode') }, streamId)
+
+pdf.toFile('file-modified.pdf')
 ```
